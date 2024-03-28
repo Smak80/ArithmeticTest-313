@@ -12,10 +12,9 @@ enum class Operator(val symbol: Char){
 class Example {
     val op1: Int
     val op2: Int
-    val op: Operator
+    val op: Operator = Operator.entries[Random.nextInt(4)]
     var isCorrect: Boolean? by mutableStateOf(null)
     init{
-        op = Operator.entries[Random.nextInt(4)]
         val (op1, op2) = when(op){
             Operator.PLUS,
             Operator.MINUS -> Random.nextInt(1, 100) to Random.nextInt(1, 100)
