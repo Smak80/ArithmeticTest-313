@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -25,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -47,7 +50,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainUI(Modifier.fillMaxSize())
+                    MainUI(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(8.dp))
                 }
             }
         }
@@ -58,24 +64,26 @@ class MainActivity : ComponentActivity() {
 fun MainUI(
     modifier: Modifier = Modifier
 ){
-    val opList = listOf('+', '-', '*', '/')
-    val op = opList[Random.nextInt(4)]
-    val (op1, op2) = when(op){
-        '+',
-        '-' -> Random.nextInt(1, 100) to Random.nextInt(1, 100)
-        '*' -> Random.nextInt(-14, 15) to Random.nextInt(1, 15)
-        '/' -> Random.nextInt(1, 15).let { denom ->
-            val r = Random.nextInt(-14, 15)
-            denom * r to denom
+    val lst = remember {List(5){ Example() }}
+    var currentExample = 1
+    Column(modifier = modifier) {
+        lst.forEachIndexed { index, example ->
+            ExampleCard(
+                example.op1,
+                example.op2,
+                example.op.symbol,
+                modifier = Modifier.fillMaxWidth(),
+                color = when (example.isCorrect) {
+                    true -> colorResource(id = R.color.green)
+                    false -> colorResource(id = R.color.red)
+                    else -> MaterialTheme.colorScheme.primaryContainer
+                },
+                isVisible = index < currentExample,
+            ){
+                example.check(it)
+            }
         }
-        else -> 0 to 0
     }
-    ExampleCard(
-        op1,
-        op2,
-        op,
-        modifier = Modifier.fillMaxWidth()
-    )
 }
 
 @Composable
@@ -84,11 +92,15 @@ fun ExampleCard(
     op2: Int,
     operator: Char,
     modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.primaryContainer,
+    isVisible: Boolean = true,
+    onCheck: (Int?)->Unit = {}
 
 ){
     var v by remember { mutableStateOf("") }
     ElevatedCard(
-        modifier = modifier,
+        modifier = modifier.alpha(if (isVisible) 1f else 0f),
+        colors = CardDefaults.elevatedCardColors(containerColor = color )
     ) {
         Column(
             modifier = Modifier
@@ -119,7 +131,7 @@ fun ExampleCard(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
-            FilledTonalIconButton(onClick = { /*TODO*/ }) {
+            FilledTonalIconButton(onClick = { onCheck( v.toIntOrNull()) }) {
                 Icon(
                     painter = painterResource(
                         id = R.drawable.twotone_check_circle_outline_24
