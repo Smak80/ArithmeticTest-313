@@ -3,6 +3,7 @@ package ru.smak.arithmetictest_313
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,12 +14,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,7 +31,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +39,9 @@ import ru.smak.arithmetictest_313.ui.theme.ArithmeticTest313Theme
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
+
+    val mvm by viewModels<MainViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -51,9 +52,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainUI(
+                        mvm.lst,
+                        mvm.currentExample,
                         Modifier
                             .fillMaxSize()
-                            .padding(8.dp))
+                            .padding(8.dp)){ ex, res ->
+                        ex.check(res)
+                        mvm.currentExample++
+                    }
                 }
             }
         }
@@ -62,25 +68,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainUI(
-    modifier: Modifier = Modifier
+    exampleList: List<Example>,
+    currentExample: Int,
+    modifier: Modifier = Modifier,
+    onGotAnswer: (Example, Int?)->Unit = {_, _ ->},
 ){
-    val lst = remember {List(5){ Example() }}
-    var currentExample = 1
     Column(modifier = modifier) {
-        lst.forEachIndexed { index, example ->
-            ExampleCard(
-                example.op1,
-                example.op2,
-                example.op.symbol,
-                modifier = Modifier.fillMaxWidth(),
-                color = when (example.isCorrect) {
-                    true -> colorResource(id = R.color.green)
-                    false -> colorResource(id = R.color.red)
-                    else -> MaterialTheme.colorScheme.primaryContainer
-                },
-                isVisible = index < currentExample,
-            ){
-                example.check(it)
+        exampleList.forEachIndexed { index, example ->
+            if (index < currentExample) {
+                ExampleCard(
+                    example.op1,
+                    example.op2,
+                    example.op.symbol,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = when (example.isCorrect) {
+                        true -> colorResource(id = R.color.green)
+                        false -> colorResource(id = R.color.red)
+                        else -> MaterialTheme.colorScheme.primaryContainer
+                    },
+                    isEditable = example.isCorrect == null,
+                    onCheck = { onGotAnswer(example, it) }
+                )
             }
         }
     }
@@ -93,13 +101,12 @@ fun ExampleCard(
     operator: Char,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primaryContainer,
-    isVisible: Boolean = true,
+    isEditable: Boolean = true,
     onCheck: (Int?)->Unit = {}
-
 ){
     var v by remember { mutableStateOf("") }
     ElevatedCard(
-        modifier = modifier.alpha(if (isVisible) 1f else 0f),
+        modifier = modifier,
         colors = CardDefaults.elevatedCardColors(containerColor = color )
     ) {
         Column(
@@ -126,12 +133,16 @@ fun ExampleCard(
                         it.trim().toIntOrNull() != null || it.isBlank() || it == "-"
                     ) it.trim() else v },
                     modifier = Modifier.weight(0.4f),
+                    readOnly = !isEditable,
                     textStyle = TextStyle(fontSize = 36.sp),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
-            FilledTonalIconButton(onClick = { onCheck( v.toIntOrNull()) }) {
+            FilledTonalIconButton(
+                onClick = { onCheck( v.toIntOrNull()) },
+                enabled = isEditable,
+            ) {
                 Icon(
                     painter = painterResource(
                         id = R.drawable.twotone_check_circle_outline_24
